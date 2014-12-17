@@ -138,9 +138,14 @@ class Keyboard():
 if __name__ == "__main__":
     # Help Text
     help_text = """Python Bluetooth Keyboard:
-    -config: Configure the Keyboard
-    -unconfig: Unconfigure the Keyboard
-    -start: Starts the Keyboard"""
+    config: Configure the Bluetooth Keyboard
+    stop: Stops the Bluetooth Keyboard
+    start: Starts the Bluetooth Keyboard"""
+
+    # File Paths
+    filename_config = sys.path[0] + "/config.cfg"
+    filename_main = "/etc/bluetooth/main.conf"
+    filename_main_backup = "/etc/bluetooth/main.conf.bak"
 
     if not os.geteuid() == 0:  # Check if Root
         sys.exit("Only root can run this script")
@@ -148,10 +153,10 @@ if __name__ == "__main__":
     elif len(sys.argv) != 2:  # Check Length of args
         print(help_text)
 
-    elif sys.argv[1] == "-config":  # Configure System
+    elif sys.argv[1] == "config":  # Configure System
         # Get Available Inputs
         print("Available Input Events:")
-        dir_names = list(os.walk('/sys/class/input'))[0][1]
+        dir_names = list(os.walk("/sys/class/input"))[0][1]
         dir_names = filter(lambda name: "event" in name, dir_names)
         for dir_name in dir_names:
             with open("/sys/class/input/" + dir_name + "/device/name",
@@ -166,46 +171,46 @@ if __name__ == "__main__":
 
         # Write Config
         config = ConfigParser.RawConfigParser()
-        config.add_section('PiBlueBoard')
-        config.set('PiBlueBoard', 'input', input_name)
-        config.set('PiBlueBoard', 'name', bluetooth_name)
-        with open('config.cfg', 'wb') as configfile:
+        config.add_section("PiBlueBoard")
+        config.set("PiBlueBoard", "input", input_name)
+        config.set("PiBlueBoard", "name", bluetooth_name)
+        with open(filename_config, "wb") as configfile:
             config.write(configfile)
 
         # Backup main.conf
-        shutil.copyfile("/etc/bluetooth/main.conf",
-                        "/etc/bluetooth/main.conf.bak")
+        shutil.copyfile(filename_main,
+                        filename_main_backup)
 
         # Prepare main.conf
         config = ConfigParser.RawConfigParser()
-        config.read("/etc/bluetooth/main.conf")
-        config.set('General', 'DisablePlugins',
-                   'network,input,audio,pnat,sap,serial')
-        with open('/etc/bluetooth/main.conf', 'wb') as configfile:
+        config.read(filename_main)
+        config.set("General", "DisablePlugins",
+                   "network,input,audio,pnat,sap,serial")
+        with open(filename_main, "wb") as configfile:
             config.write(configfile)
 
         # Restart the bluetooth daemon
         os.system("service bluetooth restart")
 
-    elif sys.argv[1] == "-unconfig":  # Configure System
+    elif sys.argv[1] == "stop":  # Configure System
         # Restore Backup
-        shutil.copyfile("/etc/bluetooth/main.conf.bak",
-                        "/etc/bluetooth/main.conf")
+        shutil.copyfile(filename_main_backup,
+                        filename_main)
         # Restart the bluetooth daemon
         os.system("service bluetooth restart")
 
-    elif sys.argv[1] == "-start":  # Start the System
+    elif sys.argv[1] == "start":  # Start the System
         # Load configuration
         config = ConfigParser.RawConfigParser()
-        config.read("config.cfg")
-        input_name = config.get('PiBlueBoard', 'input')
-        bluetooth_name = config.get('PiBlueBoard', 'name')
+        config.read(filename_config)
+        input_name = config.get("PiBlueBoard", "input")
+        bluetooth_name = config.get("PiBlueBoard", "name")
 
         # Start the System
-        bt = Bluetooth(bluetooth_name)
-        bt.listen()
-        kb = Keyboard(input_name)
-        kb.event_loop(bt)
+        bluetooth = Bluetooth(bluetooth_name)
+        bluetooth.listen()
+        keyboard = Keyboard(input_name)
+        keyboard.event_loop(bluetooth)
     else:
         print(help_text)
 
